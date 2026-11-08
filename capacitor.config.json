@@ -1,0 +1,24 @@
+{
+  "appId": "com.smartpos.pro",
+  "appName": "Smart POS Pro",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": true
+  },
+  "plugins": {
+    "BluetoothLe": {
+      "displayStrings": {
+        "scanning": "प्रिंटर खोजा जा रहा है...",
+        "cancel": "रद्द करें",
+        "noDeviceFound": "कोई प्रिंटर नहीं मिला",
+        "ok": "ठीक है"
+      }
+    }
+  }
+}
