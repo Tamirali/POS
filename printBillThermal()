@@ -1,0 +1,82 @@
+async function printBillThermal() {
+  if (cart.length === 0) {
+    showToast('❌ कार्ट खाली है', 'error');
+    return;
+  }
+  
+  // ===== PRINT DATA BANAYEIN =====
+  let printData = '\x1B\x40';          // Init
+  printData += '\x1B\x61\x01';          // Center
+  printData += '=== SMART POS PRO ===\n';
+  printData += '--------------------------------\n';
+  printData += `Date: ${new Date().toLocaleString('hi-IN')}\n`;
+  printData += '--------------------------------\n';
+  printData += '\x1B\x61\x00';          // Left
+  
+  let total = 0;
+  cart.forEach(item => {
+    const itemTotal = item.price * item.qty;
+    total += itemTotal;
+    printData += `${item.name}\n`;
+    printData += `  ${formatQty(item.qty, item.unit)} x ₹${item.price} = ₹${itemTotal.toFixed(2)}\n`;
+  });
+  
+  printData += '--------------------------------\n';
+  printData += `TOTAL: ₹${total.toFixed(2)}\n`;
+  printData += '\x1B\x61\x01';
+  printData += 'Thank You! Visit Again\n\n\n\n';
+  
+  // ===== NATIVE PRINT =====
+  if (window.nativePrinter) {
+    try {
+      const { deviceId, serviceUuid, writeChar, BluetoothLe } = window.nativePrinter;
+      const bytes = new TextEncoder().encode(printData);
+      
+      // Base64 mein convert
+      let binary = '';
+      bytes.forEach(b => binary += String.fromCharCode(b));
+      const base64 = btoa(binary);
+      
+      // Chunks mein bhejein (BLE MTU limit ~100 bytes)
+      const chunkSize = 100;
+      for (let i = 0; i < base64.length; i += Math.ceil(chunkSize * 4 / 3)) {
+        const chunk = base64.slice(i, i + Math.ceil(chunkSize * 4 / 3));
+        await BluetoothLe.write({
+          deviceId: deviceId,
+          service: serviceUuid,
+          characteristic: writeChar,
+          value: chunk,
+          type: 'withoutResponse'
+        });
+        await new Promise(r => setTimeout(r, 20)); // Chhota delay
+      }
+      
+      showToast('🖨️ बिल प्रिंट हो गया!', 'success');
+      return;
+    } catch (err) {
+      console.error(err);
+      showToast('❌ Print fail: ' + err.message, 'error');
+      return;
+    }
+  }
+  
+  // ===== WEB BLUETOOTH FALLBACK =====
+  if (!bluetoothCharacteristic) {
+    showToast('⚠️ पहले प्रिंटर कनेक्ट करें', 'info');
+    connectBluetoothPrinter();
+    return;
+  }
+  
+  try {
+    const bytes = new TextEncoder().encode(printData);
+    for (let i = 0; i < bytes.length; i += 20) {
+      const chunk = bytes.slice(i, i + 20);
+      await bluetoothCharacteristic.writeValue(chunk);
+      await new Promise(r => setTimeout(r, 15));
+    }
+    showToast('🖨️ बिल प्रिंट हो गया!', 'success');
+  } catch (err) {
+    console.error(err);
+    showToast('❌ प्रिंट करने में विफल', 'error');
+  }
+}
